@@ -1,10 +1,16 @@
 #include "zirro.h"
 
-Zirro::Zirro(int fps) {
-    maxFps = fps;
-    maxFrames = 0;
-    initFrames = maxFps * 10;
-    pBgSub = createBackgroundSubtractorCNT();
+const double Zirro::treshold = 0.1;
+const int Zirro::imageDiffTreshold = 15;
+const int Zirro::minSecsBackground = 1;
+const int Zirro::maxSecsBackground = 60;
+
+Zirro::Zirro(int fpsInit) {
+    fps = fpsInit;
+    initFrames = fpsInit;
+    currentFrames = 0;
+    bgSub = createBackgroundSubtractorCNT(fps * minSecsBackground, true, fps * maxSecsBackground);
+    qrCodeScanner.set_config(ZBAR_QRCODE, ZBAR_CFG_ENABLE, 1);
 
     //create GUI windows
     namedWindow("Frame");
@@ -12,45 +18,25 @@ Zirro::Zirro(int fps) {
     namedWindow("FG Mask");
 }
 
-bool Zirro::sthInteresting(Mat frame) {
-    Mat grayFrame, diff;
+bool Zirro::somethingInteresting(Mat frame) {
+    Mat grayFrame;
     cvtColor(frame, grayFrame, COLOR_BGR2GRAY);
-
-    if(initFrames){
-        cout << "Initializing" << "\n";
-        actualizeBackground(grayFrame);
-        initFrames--;
-        return false;
-    }
+    currentFrames++;
+    actualizeBackground(grayFrame);
 
     bool isSthIntegersing;
-    if(back.empty()){
+    if (currentFrames <= initFrames) {
         isSthIntegersing = false;
     }else{
-        absdiff(back, grayFrame, diff);
-        isSthIntegersing = getImageDiff(diff) > 0.1;
+        Mat diff;
+        absdiff(currentBackground, grayFrame, diff);
+        double d = getImageDiff(diff);
+        isSthIntegersing = d > treshold;
+
+        cout << d << endl;
     }
 
-    if(isSthIntegersing){
-        if(maxFrames > 0){
-            cout << "Skipping act: " << maxFrames << "\n";
-            maxFrames--;
-        }else{
-            cout << "Applying" << "\n";
-
-            actualizeBackground(grayFrame);
-        }
-    }else{
-        cout << "Applying and resetting maxFrames" << "\n";
-
-        actualizeBackground(grayFrame);
-        maxFrames = maxFps * 20;
-    }
-
-    //show the current frame and the fg masks
-    imshow("Frame", grayFrame);
-    imshow("Background", back);
-    imshow("FG Mask", fgMask);
+    showFrames(grayFrame);
 
     return isSthIntegersing;
 }
@@ -59,13 +45,40 @@ void Zirro::destroy() {
     destroyAllWindows();
 }
 
+vector<string> Zirro::readQrCodes(Mat frame) {
+    Mat grayFrame;
+    cvtColor(frame, grayFrame, COLOR_BGR2GRAY);
+
+    uint width = (uint) grayFrame.cols;
+    uint height = (uint) grayFrame.rows;
+    uchar *raw = grayFrame.data;
+
+    // Wrap image data
+    Image image(width, height, "Y800", raw, width * height);
+
+    // Scan the image for barcodes
+    qrCodeScanner.scan(image);
+
+    SymbolSet s = image.get_symbols();
+    vector<string> symbols;
+    for (SymbolIterator symbol = s.symbol_begin(); symbol != s.symbol_end(); ++symbol) {
+        symbols.push_back(symbol.operator*().get_data());
+    }
+    return symbols;
+}
+
+bool Zirro::somebodySmiling(Mat frame) {
+    // TODO implement
+    return false;
+}
+
 double Zirro::getImageDiff(Mat image) {
-    int numPixels = image.cols*image.rows;
+    int numPixels = image.cols * image.rows;
     int num = 0;
     for (int i = 0; i < image.rows; ++i) {
         for (int j = 0; j < image.cols; ++j) {
-            uchar intensity = image.at<uchar>(i,j);
-            if(intensity > 15){
+            uchar intensity = image.at<uchar>(i, j);
+            if (intensity > imageDiffTreshold) {
                 num++;
             }
         }
@@ -75,7 +88,13 @@ double Zirro::getImageDiff(Mat image) {
 }
 
 void Zirro::actualizeBackground(Mat frame) {
-    pBgSub->apply(frame, fgMask);
-    pBgSub.operator*().getBackgroundImage(back);
+    bgSub->apply(frame, fgMask);
+    bgSub.operator*().getBackgroundImage(currentBackground);
 }
 
+void Zirro::showFrames(Mat frame){
+    //show the current frame and the fg masks
+    imshow("Frame", frame);
+    imshow("Background", currentBackground);
+    imshow("FG Mask", fgMask);
+}
