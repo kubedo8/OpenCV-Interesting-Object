@@ -4,6 +4,8 @@
 #include "opencv2/imgcodecs.hpp"
 #include "opencv2/videoio.hpp"
 #include "opencv2/highgui.hpp"
+#include "opencv2/imgproc.hpp"
+#include "opencv2/objdetect.hpp"
 #include "bgsubcnt.h"
 #include "zbar.h"
 
@@ -22,11 +24,15 @@ private:
     static const int imageDiffTreshold;
     static const int minSecsBackground;
     static const int maxSecsBackground;
+    static const string faceCascadeName;
+    static const string smileCascadeName;
+
+    CascadeClassifier faceClassifier;
+    CascadeClassifier smileClassifier;
 
     Mat currentBackground;
     Mat fgMask; //fg mask
     Ptr<BackgroundSubtractor> bgSub; //Background subtractor
-    int fps;
     int initFrames;
     int currentFrames;
     ImageScanner qrCodeScanner;

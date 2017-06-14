@@ -3,7 +3,7 @@
 int main(int argc, char* argv[])
 {
 
-    VideoCapture capture("/home/jakub/Downloads/video4.avi");
+    VideoCapture capture("/home/jakub/Downloads/video5.avi");
 
     capture.set(CV_CAP_PROP_FRAME_WIDTH, 320);
     capture.set(CV_CAP_PROP_FRAME_HEIGHT, 240);

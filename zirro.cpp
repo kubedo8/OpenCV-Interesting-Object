@@ -4,13 +4,23 @@ const double Zirro::treshold = 0.1;
 const int Zirro::imageDiffTreshold = 15;
 const int Zirro::minSecsBackground = 1;
 const int Zirro::maxSecsBackground = 60;
+const string Zirro::faceCascadeName = "/home/jakub/OpenCV/opencv-3.2.0/data/haarcascades/haarcascade_frontalface_default.xml";
+const string Zirro::smileCascadeName = "/home/jakub/OpenCV/opencv-3.2.0/data/haarcascades/haarcascade_smile.xml";
 
 Zirro::Zirro(int fpsInit) {
-    fps = fpsInit;
-    initFrames = fpsInit;
+    initFrames = fpsInit * minSecsBackground;
     currentFrames = 0;
-    bgSub = createBackgroundSubtractorCNT(fps * minSecsBackground, true, fps * maxSecsBackground);
+    bgSub = createBackgroundSubtractorCNT(initFrames, true, fpsInit * maxSecsBackground);
     qrCodeScanner.set_config(ZBAR_QRCODE, ZBAR_CFG_ENABLE, 1);
+
+    if (!faceClassifier.load(faceCascadeName)) {
+        printf("Error loading face cascade\n");
+    };
+
+    if (!smileClassifier.load(smileCascadeName)) {
+        printf("Error loading smile cascade\n");
+    };
+
 
     //create GUI windows
     namedWindow("Frame");
@@ -27,7 +37,7 @@ bool Zirro::somethingInteresting(Mat frame) {
     bool isSthIntegersing;
     if (currentFrames <= initFrames) {
         isSthIntegersing = false;
-    }else{
+    } else {
         Mat diff;
         absdiff(currentBackground, grayFrame, diff);
         double d = getImageDiff(diff);
@@ -68,7 +78,23 @@ vector<string> Zirro::readQrCodes(Mat frame) {
 }
 
 bool Zirro::somebodySmiling(Mat frame) {
-    // TODO implement
+    Mat grayFrame;
+    cvtColor(frame, grayFrame, COLOR_BGR2GRAY);
+    equalizeHist(grayFrame, grayFrame);
+
+    vector<Rect> faces;
+    // detect faces
+    faceClassifier.detectMultiScale(grayFrame, faces, 1.1, 2, CV_HAAR_SCALE_IMAGE, Size(30, 30));
+
+    for( int i = 0; i < faces.size(); i++ ) {
+        Mat faceROI = grayFrame( faces[i] );
+        vector<Rect> smile;
+        // detect smiles
+        smileClassifier.detectMultiScale(faceROI, smile, 1.1, 2,  CV_HAAR_SCALE_IMAGE, Size(20, 20));
+        return !smile.empty();
+
+    }
+
     return false;
 }
 
@@ -92,7 +118,7 @@ void Zirro::actualizeBackground(Mat frame) {
     bgSub.operator*().getBackgroundImage(currentBackground);
 }
 
-void Zirro::showFrames(Mat frame){
+void Zirro::showFrames(Mat frame) {
     //show the current frame and the fg masks
     imshow("Frame", frame);
     imshow("Background", currentBackground);
