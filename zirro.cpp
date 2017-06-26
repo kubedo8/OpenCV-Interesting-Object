@@ -14,18 +14,21 @@ Zirro::Zirro(int fpsInit) {
     qrCodeScanner.set_config(ZBAR_QRCODE, ZBAR_CFG_ENABLE, 1);
 
     if (!faceClassifier.load(faceCascadeName)) {
-        printf("Error loading face cascade\n");
+        cout << "Error loading face cascade" << endl;
     };
 
     if (!smileClassifier.load(smileCascadeName)) {
-        printf("Error loading smile cascade\n");
+        cout << "Error loading smile cascade" << endl;
     };
 
 
     //create GUI windows
-    namedWindow("Frame");
-    namedWindow("Background");
-    namedWindow("FG Mask");
+    namedWindow("Frame",WINDOW_NORMAL);
+    resizeWindow("Frame", 640, 360);
+    namedWindow("Background",WINDOW_NORMAL);
+    resizeWindow("Background", 640, 360);
+    namedWindow("FG Mask",WINDOW_NORMAL);
+    resizeWindow("FG Mask", 640, 360);
 }
 
 bool Zirro::somethingInteresting(Mat frame) {
@@ -43,7 +46,7 @@ bool Zirro::somethingInteresting(Mat frame) {
         double d = getImageDiff(diff);
         isSthIntegersing = d > treshold;
 
-        cout << d << endl;
+        //cout << d << endl;
     }
 
     showFrames(grayFrame);
@@ -84,13 +87,13 @@ bool Zirro::somebodySmiling(Mat frame) {
 
     vector<Rect> faces;
     // detect faces
-    faceClassifier.detectMultiScale(grayFrame, faces, 1.1, 2, CV_HAAR_SCALE_IMAGE, Size(30, 30));
+    faceClassifier.detectMultiScale(grayFrame, faces, 1.1, 4, CV_HAAR_SCALE_IMAGE, Size(30, 30));
 
     for( int i = 0; i < faces.size(); i++ ) {
         Mat faceROI = grayFrame( faces[i] );
         vector<Rect> smile;
         // detect smiles
-        smileClassifier.detectMultiScale(faceROI, smile, 1.1, 2,  CV_HAAR_SCALE_IMAGE, Size(20, 20));
+        smileClassifier.detectMultiScale(faceROI, smile, 1.1, 3,  CV_HAAR_SCALE_IMAGE, Size(20, 20));
         return !smile.empty();
 
     }

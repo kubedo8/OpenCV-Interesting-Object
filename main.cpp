@@ -3,11 +3,7 @@
 int main(int argc, char* argv[])
 {
 
-    VideoCapture capture("/home/jakub/Downloads/video5.avi");
-
-    capture.set(CV_CAP_PROP_FRAME_WIDTH, 320);
-    capture.set(CV_CAP_PROP_FRAME_HEIGHT, 240);
-    capture.set(CV_CAP_PROP_FPS, 14);
+    VideoCapture capture("/home/jakub/Downloads/test1.avi");
 
     if(!capture.isOpened()){
         //error in opening the video input
@@ -17,7 +13,8 @@ int main(int argc, char* argv[])
 
     Zirro z(14);
 
-    Mat frame;
+    Mat frame, resized;
+    int numFrame = 0;
     while(true){
         if(!capture.read(frame)) {
             cerr << "Unable to read next frame." << endl;
@@ -25,17 +22,32 @@ int main(int argc, char* argv[])
             z.destroy();
             exit(EXIT_FAILURE);
         }
-        if(z.somethingInteresting(frame)){
-            // decore qr codes
-            for(string s: z.readQrCodes(frame)){
-                cout << s << " ";
+        resize(frame, resized, Size(320, 180), 0, 0, INTER_CUBIC);
+        if(z.somethingInteresting(resized)){
+
+            cout << "Somebody is there!!!" << endl;
+
+            if(numFrame % 10 == 5) {
+                // decore qr codes
+                for (string s: z.readQrCodes(frame)) {
+                    cout << s << " ";
+                }
+                cout << endl;
+//                string outputSmile;
+//                if (z.somebodySmiling(frame)){
+//                    outputSmile = "Smiliiiiing!!";
+//                }else{
+//                    outputSmile = "Not smiling :(";
+//                }
+//                cout << outputSmile << endl;
             }
-            cout << endl;
-            cout << z.somebodySmiling(frame) << endl;
+            numFrame++;
+        }else{
+            numFrame = 0;
         }
 
 
-        waitKey(1000/14);
+        waitKey(20);
 
     }
     capture.release();
